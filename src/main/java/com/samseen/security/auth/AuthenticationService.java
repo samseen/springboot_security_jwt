@@ -5,6 +5,8 @@ import com.samseen.security.user.Role;
 import com.samseen.security.user.User;
 import com.samseen.security.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    private final AuthenticationManager authenticationManager;
+
     public AuthenticationResponse register(RegisterRequest request) {
 
         User user = User.builder()
@@ -24,6 +28,7 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
+                .username(request.getEmail())
                 .build();
 
         repository.save(user);
@@ -36,6 +41,20 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        return null;
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
+
+        User user = repository.findByEmail(request.getEmail())
+                .orElseThrow();
+
+        String jwtToken = jwtService.generateToken(user);
+
+        return AuthenticationResponse.builder()
+                .token(jwtToken)
+                .build();
     }
 }
